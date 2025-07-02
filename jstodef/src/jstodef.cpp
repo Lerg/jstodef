@@ -84,7 +84,7 @@ static void JsToDef_SendObjectMessage(const char* message_id, const char* messag
             //[-2] - message_id
             //[-3] - self
             //[-4] - callback
-            lua_call(L, 3, 0, 0);
+            lua_call(L, 3, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -103,7 +103,7 @@ static void JsToDef_SendStringMessage(const char* message_id, const char* messag
         if (check_callback_and_instance(cbk)) {
             lua_pushstring(L, message_id);
             lua_pushlstring(L, message, length);
-            lua_call(L, 3, 0, 0);
+            lua_call(L, 3, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -122,7 +122,7 @@ static void JsToDef_SendEmptyMessage(const char* message_id)
         if (check_callback_and_instance(cbk)) {
             lua_pushstring(L, message_id);
             
-            lua_call(L, 2, 0, 0);
+            lua_call(L, 2, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -142,7 +142,7 @@ static void JsToDef_SendNumMessage(const char* message_id, float message)
             lua_pushstring(L, message_id);
             lua_pushnumber(L, message);
             
-            lua_call(L, 3, 0, 0);
+            lua_call(L, 3, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -159,7 +159,7 @@ static void JsToDef_SendBoolMessage(const char* message_id, int message)
             lua_pushstring(L, message_id);
             lua_pushboolean(L, message);
 
-            lua_call(L, 3, 0, 0);
+            lua_call(L, 3, 0);
         }
         assert(top == lua_gettop(L));
     }
