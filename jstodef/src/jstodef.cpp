@@ -19,10 +19,9 @@ extern "C" {
 }
 
 struct JsToDefListener {
-    JsToDefListener() : m_L(0), m_Callback(LUA_NOREF), m_Self(LUA_NOREF) {}
+    JsToDefListener() : m_L(0), m_Callback(LUA_NOREF) {}
     lua_State* m_L;
     int m_Callback;
-    int m_Self;
 };
 
 static void UnregisterCallback(lua_State* L, JsToDefListener* cbk);
@@ -44,23 +43,6 @@ static bool check_callback_and_instance(JsToDefListener* cbk)
     int top = lua_gettop(L);
     lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->m_Callback);
     //[-1] - callback
-    lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->m_Self);
-    //[-1] - self
-    //[-2] - callback
-    lua_pushvalue(L, -1);
-    //[-1] - self
-    //[-2] - self
-    //[-3] - callback
-    dmScript::SetInstance(L);
-    //[-1] - self
-    //[-2] - callback
-    if (!dmScript::IsInstanceValid(L)) {
-        UnregisterCallback(L, cbk);
-        dmLogError("Could not run JsToDef callback because the instance has been deleted.");
-        lua_pop(L, 2);
-        assert(top == lua_gettop(L));
-        return false;
-    }
     return true;
 }
 
@@ -73,18 +55,15 @@ static void JsToDef_SendObjectMessage(const char* message_id, const char* messag
         int top = lua_gettop(L);
         bool is_fail = false;
         if (check_callback_and_instance(cbk)) {
-            //[-1] - self
-            //[-2] - callback
+            //[-1] - callback
             lua_pushstring(L, message_id);
             //[-1] - message_id
-            //[-2] - self
-            //[-3] - callback
+            //[-2] - callback
             dmScript::JsonToLua(L, message, length); // throws lua error if it fails
             //[-1] - result lua  table
             //[-2] - message_id
-            //[-3] - self
-            //[-4] - callback
-            lua_call(L, 3, 0);
+            //[-3] - callback
+            lua_call(L, 2, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -103,7 +82,7 @@ static void JsToDef_SendStringMessage(const char* message_id, const char* messag
         if (check_callback_and_instance(cbk)) {
             lua_pushstring(L, message_id);
             lua_pushlstring(L, message, length);
-            lua_call(L, 3, 0);
+            lua_call(L, 2, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -122,7 +101,7 @@ static void JsToDef_SendEmptyMessage(const char* message_id)
         if (check_callback_and_instance(cbk)) {
             lua_pushstring(L, message_id);
             
-            lua_call(L, 2, 0);
+            lua_call(L, 1, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -142,7 +121,7 @@ static void JsToDef_SendNumMessage(const char* message_id, float message)
             lua_pushstring(L, message_id);
             lua_pushnumber(L, message);
             
-            lua_call(L, 3, 0);
+            lua_call(L, 2, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -159,7 +138,7 @@ static void JsToDef_SendBoolMessage(const char* message_id, int message)
             lua_pushstring(L, message_id);
             lua_pushboolean(L, message);
 
-            lua_call(L, 3, 0);
+            lua_call(L, 2, 0);
         }
         assert(top == lua_gettop(L));
     }
@@ -176,19 +155,13 @@ static int GetEqualIndexOfListener(lua_State* L, JsToDefListener* cbk)
         lua_rawgeti(L, LUA_REGISTRYINDEX, cb->m_Callback);
         if (lua_equal(L, first, second)){
             lua_pop(L, 1);
-            lua_rawgeti(L, LUA_REGISTRYINDEX, cbk->m_Self);
-            lua_rawgeti(L, LUA_REGISTRYINDEX, cb->m_Self);
-            if (lua_equal(L, second, second + 1)){
-              lua_pop(L, 3);
-              return i;
-            }
-            lua_pop(L, 2);
+            return i;
         } else {
             lua_pop(L, 1);
         }
-      }
-      lua_pop(L, 1);
-      return -1;
+    }
+    lua_pop(L, 1);
+    return -1;
 }
 
 static void UnregisterCallback(lua_State* L, JsToDefListener* cbk)
@@ -198,7 +171,6 @@ static void UnregisterCallback(lua_State* L, JsToDefListener* cbk)
       if(cbk->m_Callback != LUA_NOREF)
       {
           dmScript::Unref(cbk->m_L, LUA_REGISTRYINDEX, cbk->m_Callback);
-          dmScript::Unref(cbk->m_L, LUA_REGISTRYINDEX, cbk->m_Self);
           cbk->m_Callback = LUA_NOREF;
       }
       m_listeners.EraseSwap(index);
@@ -218,9 +190,6 @@ static int AddListener(lua_State* L)
     luaL_checktype(L, 1, LUA_TFUNCTION);
     lua_pushvalue(L, 1);
     cbk.m_Callback = dmScript::Ref(L, LUA_REGISTRYINDEX);
-
-    dmScript::GetInstance(L);
-    cbk.m_Self = dmScript::Ref(L, LUA_REGISTRYINDEX);
 
     if(cbk.m_Callback != LUA_NOREF)
     {
@@ -251,9 +220,6 @@ static int RemoveListener(lua_State* L)
     lua_pushvalue(L, 1);
 
     cbk.m_Callback = dmScript::Ref(L, LUA_REGISTRYINDEX);
-
-    dmScript::GetInstance(L);
-    cbk.m_Self = dmScript::Ref(L, LUA_REGISTRYINDEX);
 
     UnregisterCallback(L, &cbk);
     return 0;
